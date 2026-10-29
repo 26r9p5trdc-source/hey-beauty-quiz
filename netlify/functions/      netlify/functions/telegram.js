@@ -1,7 +1,7 @@
 // HEY BEAUTY — Telegram notifications
 // Secure preparation: sending remains disabled.
 
-const TELEGRAM_ENABLED = false;
+const TELEGRAM_ENABLED = process.env.TELEGRAM_NOTIFICATIONS_ENABLED === "true";
 
 const questions = [
   {
