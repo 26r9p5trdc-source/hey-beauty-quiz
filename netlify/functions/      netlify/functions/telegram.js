@@ -303,7 +303,47 @@ exports.handler = async function (event) {
     });
   }
 
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+const chatId = process.env.TELEGRAM_CHAT_ID;
+
+if (!token || !chatId) {
   return reply(503, {
-    error: "Telegram delivery is not enabled yet"
+    error: "Telegram configuration is missing"
   });
+}
+
+try {
+  const telegramResponse = await fetch(
+    `https://api.telegram.org/bot${token}/sendMessage`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message
+      })
+    }
+  );
+
+  if (!telegramResponse.ok) {
+    console.error("Telegram delivery failed:", telegramResponse.status);
+
+    return reply(502, {
+      error: "Telegram delivery failed"
+    });
+  }
+
+  return reply(200, {
+    ok: true
+  });
+
+} catch (error) {
+  console.error("Telegram connection error:", error.message);
+
+  return reply(502, {
+    error: "Telegram connection failed"
+  });
+}
 };
