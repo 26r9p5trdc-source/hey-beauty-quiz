@@ -41,7 +41,35 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => {
     "'": '&#39;'
   };
   return entities[c];
-});
+});const nl = s => escapeHtml(s).replace(/\n/g, '<br>');
+
+const T = () => ui[lang];
+
+const Q = i => {
+  const q = questions[i];
+  const h = HU[i];
+  return {
+    title: lang === 'hu' ? h.title : q.title,
+    prompt: lang === 'hu' ? h.prompt : q.prompt,
+    opts: lang === 'hu' && h.opts ? h.opts : q.opts
+  };
+};
+
+async function notify(payload) {
+  if (!shared) return;
+
+  try {
+    const response = await fetch('/.netlify/functions/telegram', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...payload, sessionId})
+    });
+
+    if (!response.ok) deliveryErrors++;
+  } catch (error) {
+    deliveryErrors++;
+  }
+}
 function sparkle(count=12){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;for(let i=0;i<count;i++){let e=document.createElement('span');e.className='spark';e.textContent=['💋','✨','❤️','😈','💖'][i%5];e.style.left=(10+Math.random()*80)+'vw';e.style.top=(35+Math.random()*45)+'vh';e.style.animationDelay=(Math.random()*.35)+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),2200)}}
 function switcher(){return `<div class="languages" role="group" aria-label="Language / Nyelv"><button class="lang ${lang==='en'?'active':''}" id="en" aria-pressed="${lang==='en'}">🇬🇧 English</button><button class="lang ${lang==='hu'?'active':''}" id="hu" aria-pressed="${lang==='hu'}">🇭🇺 Magyar</button></div>`}
 function bindLanguage(){document.getElementById('en').onclick=()=>setLang('en');document.getElementById('hu').onclick=()=>setLang('hu')}
@@ -54,7 +82,16 @@ function showAfter(){const q=questions[idx],n=answers[idx],lq=Q(idx);let msg='';
     }
   };
 }
-function finale(){const score=questions.reduce((s,q,i)=>s+(q.correct!==undefined&&answers[i]===q.correct?1:0),0),total=5;if(!finalSent){finalSent=true;const summary=questions.map((q,i)=>({question:i+1,choice:answers[i],hint:hints[i]||undefined}));void notify({event:'final',answers:summary,score,total});sparkle(25)}fill.style.width='100%';const list=questions.map((q,i)=>`<div class="answer"><strong>${i+1}. ${escapeHtml(Q(i).title)}</strong><br>${nl(Q(i).opts[answers[i]]||T().noAnswer)}${hints[i]?`<br><span class="muted">Hint: ${escapeHtml(hints[i])}</span>`:''}</div>`).join('');app.innerHTML=`${switcher()}<div class="eyebrow">${T().confessions}</div><h1 class="shimmer">${T().finalTitle}</h1><div class="score-big">${score}/${total} ✨</div><p>${T().survived}</p><p><span class="tag">${T().memory}: ${score}/${total}</span></p><p>${T().journey}</p><p><b>${T().badDay}</b></p><p>${T().far}</p><p class="note">${T().prediction}: <b>${escapeHtml(Q(5).opts[answers[5]])}</b>. ${T().yourChoice}</p><h2>${T().yourAnswers}</h2>${list}<p class="muted">${T().sharing}: ${shared?T().live:T().privatePlay}</p><label><input type="checkbox" id="consent"> ${T().copyConsent}</label><button class="btn" id="copy">${T().copy}</button> <button class="btn" id="again" style="margin-top:10px;background:#542442">${T().again}</button><p id="copyStatus" class="muted" aria-live="polite"></p>`;bindLanguage();document.getElementById('again').onclick=()=>{idx=-1;answers=[];hints={};interludeSeen={};shared=false;sessionId=null;finalSent=false;afterChoice=false;render()};document.getElementById('copy').onclick=async()=>{if(!document.getElementById('consent').checked){document.getElementById('copyStatus').textContent=T().tick;return}const t=`BEAUTY'S CONFESSIONS 💋\nMemory score: ${score}/${total}\n\n`+questions.map((q,i)=>`${i+1}. ${q.title}\n${q.opts[answers[i]]}${hints[i]?`\nHint: ${hints[i]}`:''}`).join('\n\n');try{await navigator.clipboard.writeText(t);document.getElementById('copyStatus').textContent=T().copied}catch{const ta=document.createElement('textarea');ta.value=t;app.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();document.getElementById('copyStatus').textContent=T().copiedMaybe}}}
-alert("Quiz JavaScript gestart");
+document.getElementById('next').onclick=()=>{
+  const h=document.getElementById('hint');
+  if(h&&h.value.trim()){
+    hints[idx]=h.value.trim().slice(0,600);
+    void notify({event:'hint',question:idx+1,hint:hints[idx]});
+  }
+  afterChoice=false;
+  idx++;
+  render();
+};
+}function finale(){const score=questions.reduce((s,q,i)=>s+(q.correct!==undefined&&answers[i]===q.correct?1:0),0),total=5;if(!finalSent){finalSent=true;const summary=questions.map((q,i)=>({question:i+1,choice:answers[i],hint:hints[i]||undefined}));void notify({event:'final',answers:summary,score,total});sparkle(25)}fill.style.width='100%';const list=questions.map((q,i)=>`<div class="answer"><strong>${i+1}. ${escapeHtml(Q(i).title)}</strong><br>${nl(Q(i).opts[answers[i]]||T().noAnswer)}${hints[i]?`<br><span class="muted">Hint: ${escapeHtml(hints[i])}</span>`:''}</div>`).join('');app.innerHTML=`${switcher()}<div class="eyebrow">${T().confessions}</div><h1 class="shimmer">${T().finalTitle}</h1><div class="score-big">${score}/${total} ✨</div><p>${T().survived}</p><p><span class="tag">${T().memory}: ${score}/${total}</span></p><p>${T().journey}</p><p><b>${T().badDay}</b></p><p>${T().far}</p><p class="note">${T().prediction}: <b>${escapeHtml(Q(5).opts[answers[5]])}</b>. ${T().yourChoice}</p><h2>${T().yourAnswers}</h2>${list}<p class="muted">${T().sharing}: ${shared?T().live:T().privatePlay}</p><label><input type="checkbox" id="consent"> ${T().copyConsent}</label><button class="btn" id="copy">${T().copy}</button> <button class="btn" id="again" style="margin-top:10px;background:#542442">${T().again}</button><p id="copyStatus" class="muted" aria-live="polite"></p>`;bindLanguage();document.getElementById('again').onclick=()=>{idx=-1;answers=[];hints={};interludeSeen={};shared=false;sessionId=null;finalSent=false;afterChoice=false;render()};document.getElementById('copy').onclick=async()=>{if(!document.getElementById('consent').checked){document.getElementById('copyStatus').textContent=T().tick;return}const t=`BEAUTY'S CONFESSIONS 💋\nMemory score: ${score}/${total}\n\n`+questions.map((q,i)=>`${i+1}. ${q.title}\n${q.opts[answers[i]]}${hints[i]?`\nHint: ${hints[i]}`:''}`).join('\n\n');try{await navigator.clipboard.writeText(t);document.getElementById('copyStatus').textContent=T().copied}catch{const ta=document.createElement('textarea');ta.value=t;app.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();document.getElementById('copyStatus').textContent=T().copiedMaybe}}}
 render();
 </script></body></html>
