@@ -347,3 +347,11 @@ try {
   });
 }
 };
+// Limit requests to this function by IP address.
+exports.config = {
+  rateLimit: {
+    windowLimit: 30,
+    windowSize: 60,
+    aggregateBy: ["ip"]
+  }
+};
